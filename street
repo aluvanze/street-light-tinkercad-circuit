@@ -1,0 +1,89 @@
+#include <LiquidCrystal.h>
+
+// Define pins
+const int forceSensorPin = A1;
+const int ultrasonicPin = A0;  // Single pin for trigger and echo
+const int piezoPin = 3;
+
+// LCD setup
+LiquidCrystal lcd(4, 5, 6, 7, 8, 9);
+
+// Constants
+const int forceThreshold = 100; // Adjust this based on the force sensor's values
+const long distanceThreshold = 50; // Distance in cm for ultrasonic detection
+
+void setup() {
+  // Initialize the LCD
+  lcd.begin(16, 2);
+  lcd.clear();
+  
+  // Display default message
+  lcd.setCursor(0, 0);
+  lcd.print("No one at the");
+  lcd.setCursor(0, 1);
+  lcd.print("door");
+
+  // Initialize pins
+  pinMode(piezoPin, OUTPUT);
+
+  Serial.begin(9600); // For debugging
+}
+
+void loop() {
+  bool someoneDetected = false;  // Reset detection flag each loop
+
+  // Read force sensor value
+  int forceValue = analogRead(forceSensorPin);
+  // Measure distance from ultrasonic sensor
+  long distance = readUltrasonicDistance(ultrasonicPin);
+
+  // Check if force sensor is triggered
+  if (forceValue > forceThreshold) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Someone at the");
+    lcd.setCursor(0, 1);
+    lcd.print("door");
+    tone(piezoPin, 1000); // Activate piezo
+    delay(500);
+    noTone(piezoPin); // Turn off piezo after brief sound
+    someoneDetected = true; // Mark detection
+  }
+  // Check if movement detected by ultrasonic sensor
+  else if (distance < distanceThreshold) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Someone at the");
+    lcd.setCursor(0, 1);
+    lcd.print("door moving");
+    tone(piezoPin, 1000); // Activate piezo
+    delay(500);
+    noTone(piezoPin); // Turn off piezo
+    someoneDetected = true; // Mark detection
+  }
+
+  // Default display if no detection
+  if (!someoneDetected) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("No one at the");
+    lcd.setCursor(0, 1);
+    lcd.print("door");
+    noTone(piezoPin); // Ensure piezo is off
+  }
+
+  delay(200); // Brief delay between readings
+}
+
+long readUltrasonicDistance(int pin) {
+  pinMode(pin, OUTPUT);  // Set pin as output for trigger
+  digitalWrite(pin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(pin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(pin, LOW);
+  
+  pinMode(pin, INPUT);  // Set pin as input for echo
+  long duration = pulseIn(pin, HIGH);
+  return duration * 0.034 / 2; // Convert to distance in cm
+}
